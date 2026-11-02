@@ -32,6 +32,7 @@ WANT_BUILD_PROP="${14:-false}"
 WANT_FRAMEWORK_RRO="${15:-false}"
 WANT_PIT="${16:-false}"
 WANT_WALLPAPER_RES="${17:-false}"
+WANT_SAMSUGCAMERA="${18:-false}"
 
 chmod +x tools/android-tools/* tools/erofs-utils/* 2>/dev/null || true
 
@@ -57,7 +58,7 @@ TARGETS=""
 [ "$WANT_BUILD_PROP" = "true" ] && TARGETS="$TARGETS build.prop"
 TARGETS="${TARGETS# }"
 
-if [ -z "$TARGETS" ] && [ "$WANT_SUPER_CONFIG" != "true" ] && [ "$WANT_FRAMEWORK_RRO" != "true" ] && [ "$WANT_PIT" != "true" ] && [ "$WANT_WALLPAPER_RES" != "true" ]; then
+if [ -z "$TARGETS" ] && [ "$WANT_SUPER_CONFIG" != "true" ] && [ "$WANT_FRAMEWORK_RRO" != "true" ] && [ "$WANT_PIT" != "true" ] && [ "$WANT_WALLPAPER_RES" != "true" ] && [ "$WANT_SAMSUGCAMERA" != "true" ]; then
   echo "❌ No targets selected!"
   exit 1
 fi
@@ -269,7 +270,7 @@ else
   echo ""; echo "[6/8] Product extraction skipped"
 fi
 
-if [ -z "$TARGETS" ] && [ "$WANT_WALLPAPER_RES" != "true" ]; then
+if [ -z "$TARGETS" ] && [ "$WANT_WALLPAPER_RES" != "true" ] && [ "$WANT_SAMSUGCAMERA" != "true" ]; then
   echo ""; echo "[7/8] No system targets - skipping"
 else
   [ -z "$SYSTEM_IMG" ] || [ ! -f "$SYSTEM_IMG" ] && { echo "❌ system.img not found"; exit 1; }
@@ -280,17 +281,18 @@ else
 
   FS_TYPE=$(blkid -o value -s TYPE "$SYSTEM_IMG" 2>/dev/null || file "$SYSTEM_IMG" | grep -o 'f2fs\|erofs\|ext[234]')
 
+  ALL_TARGETS="$TARGETS"
+  [ "$WANT_WALLPAPER_RES" = "true" ] && ALL_TARGETS="$ALL_TARGETS priv-app/wallpaper-res"
+  [ "$WANT_SAMSUGCAMERA" = "true" ] && ALL_TARGETS="$ALL_TARGETS priv-app/SamsungCamera app/SamsungCamera"
+
   if [ "$FS_TYPE" = "f2fs" ]; then
     echo "  Detected f2fs filesystem - mounting..."
-    ALL_TARGETS="$TARGETS"
-    [ "$WANT_WALLPAPER_RES" = "true" ] && ALL_TARGETS="$ALL_TARGETS priv-app/wallpaper-res"
     extract_f2fs "$SYSTEM_IMG" "system_extracted" "$ALL_TARGETS" "$SINGLE_FILES" || true
   elif tools/erofs-utils/extract.erofs -i "$SYSTEM_IMG" -x -o system_extracted/ >/dev/null 2>&1; then
     echo "  ✅ Extracted via erofs"
   else
     echo "  erofs failed - trying debugfs..."
-    DEBUGFS_TARGETS="$TARGETS"
-    [ "$WANT_WALLPAPER_RES" = "true" ] && DEBUGFS_TARGETS="$DEBUGFS_TARGETS priv-app/wallpaper-res"
+    DEBUGFS_TARGETS="$ALL_TARGETS"
 
     for TARGET in $DEBUGFS_TARGETS; do
       IS_FILE=false
@@ -309,7 +311,6 @@ else
         $FOUND || echo "  ⚠️ $TARGET not found"
       else
         FOUND=false
-        
         DEST_PARENT="system_extracted/$(dirname "$TARGET")"
         mkdir -p "$DEST_PARENT"
         for SRC_PATH in "$TARGET" "system/$TARGET"; do
@@ -343,6 +344,27 @@ else
       fi
     done
     $APK_FOUND || echo "  ⚠️ wallpaper-res.apk not found"
+  fi
+
+  if [ "$WANT_SAMSUGCAMERA" = "true" ]; then
+    CAM_FOUND=false
+    for BASE in \
+      "system_extracted/priv-app/SamsungCamera" \
+      "system_extracted/app/SamsungCamera" \
+      "system_extracted/system/priv-app/SamsungCamera" \
+      "system_extracted/system/app/SamsungCamera" \
+      "system_extracted/system_a/priv-app/SamsungCamera" \
+      "system_extracted/system_a/app/SamsungCamera" \
+      "system_extracted/system/system/priv-app/SamsungCamera" \
+      "system_extracted/system/system/app/SamsungCamera"; do
+      if [ -d "$BASE" ]; then
+        cp -r "$BASE" "output/SamsungCamera"
+        echo "    ✓ SamsungCamera"
+        CAM_FOUND=true
+        break
+      fi
+    done
+    $CAM_FOUND || echo "  ⚠️ SamsungCamera not found"
   fi
 
   for TARGET in $TARGETS; do
