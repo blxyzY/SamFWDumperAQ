@@ -110,18 +110,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            jq \
-            xz-utils \
-            lz4 \
-            unzip \
-            curl \
-            android-sdk-libsparse-utils \
-            e2fsprogs \
-            f2fs-tools \
-            linux-modules-extra-$(uname -r)
+              run: |
+                sudo apt-get update
+                sudo apt-get install -y \
+                  jq \
+                  xz-utils \
+                  lz4 \
+                  unzip \
+                  curl \
+                  android-sdk-libsparse-utils \
+                  e2fsprogs \
+                  f2fs-tools
+                # Coba instal linux-modules-extra secara opsional agar tidak memutus workflow jika gagal
+                sudo apt-get install -y linux-modules-extra-$(uname -r) || echo "⚠️ Warning: linux-modules-extra not found for this runner kernel, skipping..."
 
       - name: Make tools executable
         run: chmod +x tools/android-tools/* tools/erofs-utils/* upload_gofile.sh scripts/extract_system_files.sh
