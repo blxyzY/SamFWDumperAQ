@@ -95,6 +95,10 @@ on:
         description: 'wallpaper-res.apk (Wallpaper resources APK from priv-app)'
         type: boolean
         default: false
+      extract_samsung_camera:
+        description: 'SamsungCamera (Samsung Camera app/folder)'
+        type: boolean
+        default: false
 
 jobs:
   extract:
@@ -141,7 +145,8 @@ jobs:
             "${{ github.event.inputs.extract_build_prop }}" \
             "${{ github.event.inputs.extract_framework_rro }}" \
             "${{ github.event.inputs.extract_pit }}" \
-            "${{ github.event.inputs.extract_wallpaper_res }}"
+            "${{ github.event.inputs.extract_wallpaper_res }}" \
+            "${{ github.event.inputs.extract_samsung_camera }}"
 
       - name: Get Firmware Info
         id: fwinfo
@@ -237,4 +242,3 @@ jobs:
             "${ASSETS[@]}"
 
           rm -f "$NOTES_FILE"
-          
